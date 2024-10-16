@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Encryption and Decryption</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+            background: rgb(2,0,36);
+background: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(4,2,58,1) 9%, rgba(24,24,65,1) 100%, rgba(0,212,255,1) 100%);}
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            margin-bottom: 20px;
+            
+        
+            
+        }
+        h2{color: white;}
+        h1 {
+            text-align: center;
+            color: #333;
+
+        }
+        .form-group {
+            margin-bottom: 15px;
+            
+            
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .result p {
+            margin: 0;
+            font-weight: bold;
+        }
+        .main{
+            display: flex;
+            gap: 20px;
+        }
+       
+    </style>
+</head>
+<h2>AdaptiveShift-Cipher</h2>
+
+<body>
+
+<!-- Encryption Section -->
+ <div class="main">
+<div class="container">
+
+    <h1>Encrypt Text</h1>
+    <div class="form-group">
+        <label for="plainText">Plain Text:</label>
+        <input type="text" id="plainText" placeholder="Enter plain text">
+    </div>
+    <div class="form-group">
+        <label for="key">Key (Numeric):</label>
+        <input type="number" id="key" placeholder="Enter key">
+    </div>
+    <button onclick="encrypt()">Encrypt</button>
+
+    <div class="result" id="encryptionResult" style="display: none;">
+        <p id="c2Result"></p>
+    </div>
+</div>
+
+<!-- Decryption Section -->
+<div class="container">
+    <h1>Decrypt Text</h1>
+    <div class="form-group">
+        <label for="cipherText">Cipher Text (C2):</label>
+        <input type="text" id="cipherText" placeholder="Enter cipher text">
+    </div>
+    <div class="form-group">
+        <label for="decryptKey">Key (Numeric):</label>
+        <input type="number" id="decryptKey" placeholder="Enter key">
+    </div>
+    <button onclick="decrypt()">Decrypt</button>
+
+    <div class="result" id="decryptionResult" style="display: none;">
+        <p id="plainTextResult"></p>
+    </div>
+</div>
+</div>
+<script>
+    // Function to shift characters alphabetically by the shift value
+    function shiftCharacter(char, shiftValue) {
+        if (char.match(/[a-zA-Z]/)) {
+            const base = char === char.toUpperCase() ? 'A' : 'a';
+            const shiftedChar = String.fromCharCode(((char.charCodeAt(0) - base.charCodeAt(0) + shiftValue) % 26) + base.charCodeAt(0));
+            return shiftedChar;
+        }
+        return char;
+    }
+
+    // Function to reverse the character shift
+    function reverseShiftCharacter(char, shiftValue) {
+        if (char.match(/[a-zA-Z]/)) {
+            const base = char === char.toUpperCase() ? 'A' : 'a';
+            const shiftedChar = String.fromCharCode(((char.charCodeAt(0) - base.charCodeAt(0) - shiftValue + 26) % 26) + base.charCodeAt(0));
+            return shiftedChar;
+        }
+        return char;
+    }
+
+    // Function to cyclically shift within the text
+    function shiftWithinText(C1, shiftSize) {
+        const length = C1.length;
+        const shiftedC1 = Array.from(C1);
+
+        for (let i = 0; i < length; i++) {
+            const newPosition = (i + shiftSize) % length;
+            shiftedC1[newPosition] = C1[i];
+        }
+
+        return shiftedC1.join('');
+    }
+
+    // Function to reverse the cyclic shift
+    function reverseShiftWithinText(C2, shiftSize) {
+        const length = C2.length;
+        const shiftedC2 = Array.from(C2);
+
+        for (let i = 0; i < length; i++) {
+            const newPosition = (i - shiftSize + length) % length;
+            shiftedC2[newPosition] = C2[i];
+        }
+
+        return shiftedC2.join('');
+    }
+
+    // Main encryption function
+    function encrypt() {
+        const plainText = document.getElementById('plainText').value;
+        const key = document.getElementById('key').value;
+
+        if (!plainText || !key || isNaN(key)) {
+            alert('Please enter valid plain text and numeric key.');
+            return;
+        }
+
+        const textLength = plainText.length;
+        let requiredLength;
+
+        // Determine required key length based on text length
+        if (2 <= textLength && textLength <= 5) {
+            requiredLength = 2;
+        } else if (6 <= textLength && textLength <= 20) {
+            requiredLength = 4;
+        } else if (21 <= textLength && textLength <= 100) {
+            requiredLength = 8;
+        } else if (textLength > 100) {
+            requiredLength = 16;
+        } else {
+            alert('Text length is out of bounds for the algorithm.');
+            return;
+        }
+
+        const keyStr = String(key);
+        if (keyStr.length < requiredLength) {
+            alert(`Key must be at least ${requiredLength} digits long.`);
+            return;
+        }
+
+        const keyDigits = Array.from(keyStr.slice(0, requiredLength)).map(Number);
+
+        // Generate C1
+        let C1 = '';
+        for (let i = 0; i < plainText.length; i++) {
+            const shiftValue = keyDigits[i % keyDigits.length];
+            C1 += shiftCharacter(plainText[i], shiftValue);
+        }
+
+        // Shift within the text to generate C2
+        const shiftSize = keyDigits.length;
+        const C2 = shiftWithinText(C1, shiftSize);
+
+        // Display only C2
+        document.getElementById('c2Result').textContent = `Final Cipher Text (C2): ${C2}`;
+        document.getElementById('encryptionResult').style.display = 'block';
+    }
+
+    // Main decryption function
+    function decrypt() {
+        const cipherText = document.getElementById('cipherText').value;
+        const key = document.getElementById('decryptKey').value;
+
+        if (!cipherText || !key || isNaN(key)) {
+            alert('Please enter valid cipher text and numeric key.');
+            return;
+        }
+
+        const textLength = cipherText.length;
+        let requiredLength;
+
+        // Determine required key length based on text length
+        if (2 <= textLength && textLength <= 5) {
+            requiredLength = 2;
+        } else if (6 <= textLength && textLength <= 20) {
+            requiredLength = 4;
+        } else if (21 <= textLength && textLength <= 100) {
+            requiredLength = 8;
+        } else if (textLength > 100) {
+            requiredLength = 16;
+        } else {
+            alert('Text length is out of bounds for the algorithm.');
+            return;
+        }
+
+        const keyStr = String(key);
+        if (keyStr.length < requiredLength) {
+            alert(`Key must be at least ${requiredLength} digits long.`);
+            return;
+        }
+
+        const keyDigits = Array.from(keyStr.slice(0, requiredLength)).map(Number);
+
+        // Reverse shift within the text to generate C1
+        const shiftSize = keyDigits.length;
+        const C1 = reverseShiftWithinText(cipherText, shiftSize);
+
+        // Reverse character shifting to get plain text
+        let plainText = '';
+        for (let i = 0; i < C1.length; i++) {
+            const shiftValue = keyDigits[i % keyDigits.length];
+            plainText += reverseShiftCharacter(C1[i], shiftValue);
+        }
+
+        // Display the plain text
+        document.getElementById('plainTextResult').textContent = `Decrypted Text: ${plainText}`;
+        document.getElementById('decryptionResult').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
